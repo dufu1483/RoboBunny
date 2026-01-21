@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>彈力兔 RoboBunny - 採草莓任務</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🐰 彈力兔 RoboBunny</h1>
+            <nav class="nav-tabs">
+                <button class="tab-btn active" data-tab="designer">🗺️ 地圖設計</button>
+                <button class="tab-btn" data-tab="game">🎮 開始遊戲</button>
+            </nav>
+        </header>
+
+        <!-- Map Designer Tab -->
+        <section id="designer-tab" class="tab-content active">
+            <div class="designer-layout">
+                <!-- Toolbar -->
+                <div class="toolbar">
+                    <h3>🎨 繪製工具</h3>
+                    <div class="tool-group">
+                        <button class="tool-btn active" data-tool="cycle" title="點擊切換">
+                            <span class="tool-icon">👆</span>
+                            <span>智慧切換</span>
+                        </button>
+                        <button class="tool-btn" data-tool="empty" title="空地">
+                            <span class="tool-icon">🟩</span>
+                            <span>空地</span>
+                        </button>
+                        <button class="tool-btn" data-tool="strawberry" title="草莓">
+                            <span class="tool-icon">🍓</span>
+                            <span>草莓</span>
+                        </button>
+                        <button class="tool-btn" data-tool="stone" title="石頭">
+                            <span class="tool-icon">🪨</span>
+                            <span>石頭</span>
+                        </button>
+                        <button class="tool-btn" data-tool="bunny" title="兔子起點">
+                            <span class="tool-icon">🐰</span>
+                            <span>兔子</span>
+                        </button>
+                    </div>
+
+                    <div class="strawberry-count" id="strawberry-options" style="display:none;">
+                        <label>草莓數量：</label>
+                        <div class="count-btns">
+                            <button class="count-btn active" data-count="1">1</button>
+                            <button class="count-btn" data-count="2">2</button>
+                            <button class="count-btn" data-count="3">3</button>
+                            <button class="count-btn" data-count="4">4</button>
+                            <button class="count-btn" data-count="5">5</button>
+                            <button class="count-btn" data-count="6">6</button>
+                            <button class="count-btn" data-count="7">7</button>
+                            <button class="count-btn" data-count="8">8</button>
+                            <button class="count-btn" data-count="9">9</button>
+                        </div>
+                    </div>
+
+                    <div class="bunny-direction" id="direction-options" style="display:none;">
+                        <label>兔子方向：</label>
+                        <div class="direction-btns">
+                            <button class="dir-btn active" data-dir="up">⬆️ 上</button>
+                            <button class="dir-btn" data-dir="right">➡️ 右</button>
+                            <button class="dir-btn" data-dir="down">⬇️ 下</button>
+                            <button class="dir-btn" data-dir="left">⬅️ 左</button>
+                        </div>
+                    </div>
+
+                    <div class="puzzle-settings">
+                        <label>積木數量限制：</label>
+                        <input type="number" id="block-limit-input" min="5" max="50" value="20" class="limit-input">
+                    </div>
+
+                    <div class="tool-actions">
+                        <button class="action-btn" id="clear-map">🗑️ 清空地圖</button>
+                        <button class="action-btn" id="save-map">💾 儲存地圖</button>
+                        <button class="action-btn" id="load-map">📂 載入檔案</button>
+                        <button class="action-btn" id="export-map">📤 匯出檔案</button>
+                    </div>
+
+                    <div class="saved-maps">
+                        <h4>已儲存地圖</h4>
+                        <div id="map-list"></div>
+                    </div>
+                </div>
+
+                <!-- Grid Canvas -->
+                <div class="grid-container">
+                    <div class="grid" id="designer-grid"></div>
+                    <div class="grid-info">
+                        <span>地圖大小：21 × 21</span>
+                        <span id="total-strawberries">總草莓數：0</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Game Tab -->
+        <section id="game-tab" class="tab-content">
+            <div class="game-layout">
+                <!-- Block Editor -->
+                <div class="block-editor">
+                    <h3>🧩 程式積木</h3>
+
+                    <div class="editor-columns">
+                        <!-- Block Palette Column -->
+                        <div class="block-palette">
+                            <div class="block-category">
+                                <h4>移動指令</h4>
+                                <div class="block-item" draggable="true" data-block="F_Jump">
+                                    <span class="block-color jump"></span>
+                                    F_Jump(<select class="block-param">
+                                        <option>1</option>
+                                        <option>2</option>
+                                    </select>)
+                                </div>
+                                <div class="block-item" draggable="true" data-block="FR_Jump">
+                                    <span class="block-color jump-r"></span>
+                                    FR_Jump(<select class="block-param">
+                                        <option>1</option>
+                                        <option>2</option>
+                                    </select>)
+                                </div>
+                                <div class="block-item" draggable="true" data-block="FL_Jump">
+                                    <span class="block-color jump-l"></span>
+                                    FL_Jump(<select class="block-param">
+                                        <option>1</option>
+                                        <option>2</option>
+                                    </select>)
+                                </div>
+                            </div>
+
+                            <div class="block-category">
+                                <h4>轉向指令</h4>
+                                <div class="block-item" draggable="true" data-block="Turn">
+                                    <span class="block-color turn"></span>
+                                    Turn(<select class="block-param">
+                                        <option>右</option>
+                                        <option>左</option>
+                                        <option>後</option>
+                                    </select>)
+                                </div>
+                            </div>
+
+                            <div class="block-category">
+                                <h4>控制積木</h4>
+                                <div class="block-item control" draggable="true" data-block="Repeat">
+                                    <span class="block-color control"></span>
+                                    🔁 重複 <input type="number" class="block-param" value="2" min="1" max="99"
+                                        style="width: 50px;"> 次
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Program Area Column -->
+                        <div class="program-area">
+                            <div class="program-header">
+                                <h4>我的程式</h4>
+                                <span class="block-count">積木數：<span id="block-count">0</span> / <span
+                                        id="block-limit">20</span></span>
+                            </div>
+                            <div class="program-blocks" id="program-blocks">
+                                <div class="drop-hint">拖曳積木到這裡</div>
+                            </div>
+                            <div class="program-actions">
+                                <button class="action-btn danger" id="clear-program">🗑️ 清除程式</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game Grid -->
+                <div class="game-container">
+                    <div class="game-header">
+                        <div class="score-display">
+                            <span class="score-icon">🍓</span>
+                            <span class="score-value" id="score">0</span>
+                        </div>
+                        <div class="score-display move-display">
+                            <span class="score-icon">👣</span>
+                            <span class="score-value" id="move-count">0</span>
+                        </div>
+                        <div class="game-status" id="game-status">準備開始</div>
+                    </div>
+
+                    <div class="grid" id="game-grid"></div>
+
+                    <div class="game-controls">
+                        <select id="map-selector" class="map-select">
+                            <option value="">-- 選擇地圖 --</option>
+                        </select>
+                        <button class="control-btn" id="run-btn">▶️ 執行</button>
+                        <button class="control-btn" id="step-btn">⏭️ 單步</button>
+                        <button class="control-btn" id="reset-btn">🔄 重置</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="map-designer.js"></script>
+    <script src="game-engine.js"></script>
+    <script src="block-editor.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
