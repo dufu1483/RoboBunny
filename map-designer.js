@@ -89,7 +89,10 @@ class MapDesigner {
                 document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.bunnyDirection = btn.dataset.dir;
+
+                // If bunny is already placed, update its direction
                 if (this.bunnyPosition) {
+                    this.bunnyPosition.direction = this.bunnyDirection;
                     this.renderGrid();
                 }
             });
@@ -254,7 +257,8 @@ class MapDesigner {
             if (this.bunnyPosition && this.bunnyPosition.x === x && this.bunnyPosition.y === y) {
                 cell.classList.add('bunny');
                 const sprite = document.createElement('span');
-                sprite.className = `bunny-sprite ${this.bunnyDirection}`;
+                // Use the stored direction from bunnyPosition, not the current tool state
+                sprite.className = `bunny-sprite ${this.bunnyPosition.direction}`;
                 sprite.textContent = '🐰';
                 cell.appendChild(sprite);
                 return;
