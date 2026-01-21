@@ -457,258 +457,34 @@ body {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: var(--radius);
-    padding: 20px;
+    padding: 0;
+    /* Blockly needs full space */
     backdrop-filter: blur(10px);
+    overflow: hidden;
+    /* Ensure rounded corners clip Blockly */
+    height: 640px;
+    /* Fixed height for the container */
+    display: flex;
+    flex-direction: column;
 }
 
 .block-editor h3 {
-    margin-bottom: 15px;
+    padding: 15px 20px 10px;
+    margin-bottom: 0;
     color: var(--primary);
+    background: rgba(0, 0, 0, 0.2);
 }
 
-/* Side-by-side layout for palette and program */
-.editor-columns {
-    display: flex;
-    gap: 15px;
-}
-
-.block-palette {
-    flex: 0 0 auto;
-    width: 180px;
-}
-
-.block-category {
-    margin-bottom: 15px;
-}
-
-.block-category h4 {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-bottom: 8px;
-}
-
-.block-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 2px solid transparent;
-    border-radius: var(--radius-sm);
-    margin-bottom: 6px;
-    cursor: grab;
-    transition: var(--transition);
-    font-size: 0.95rem;
-}
-
-.block-item:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: var(--card-border);
-}
-
-.block-item:active {
-    cursor: grabbing;
-}
-
-.block-color {
-    width: 12px;
-    height: 12px;
-    border-radius: 3px;
-}
-
-.block-color.jump {
-    background: #3b82f6;
-}
-
-.block-color.jump-r {
-    background: #8b5cf6;
-}
-
-.block-color.jump-l {
-    background: #ec4899;
-}
-
-.block-color.turn {
-    background: #f59e0b;
-}
-
-.block-color.control {
-    background: #10b981;
-}
-
-.block-param {
-    padding: 2px 6px;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--card-border);
-    border-radius: 4px;
-    color: var(--text);
-    font-family: var(--font);
-}
-
-/* ===== Program Area ===== */
-.program-area {
+#blocklyDiv {
     flex: 1;
-    background: rgba(0, 0, 0, 0.2);
-    border: 2px dashed var(--card-border);
-    border-radius: var(--radius);
-    padding: 15px;
-}
-
-.program-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.program-header h4 {
-    color: var(--text);
-}
-
-.block-count {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-.program-blocks {
-    min-height: 200px;
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: var(--radius-sm);
-    border: 2px dashed transparent;
-    transition: all 0.2s ease;
-}
-
-.program-blocks.drag-over {
-    border-color: var(--primary);
-    background: rgba(0, 217, 255, 0.05);
-}
-
-.drop-hint {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    min-height: 180px;
-    color: var(--text-muted);
-    font-style: italic;
-}
-
-.program-blocks.has-blocks .drop-hint {
-    display: none;
-}
-
-.program-block {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-sm);
-    margin-bottom: 6px;
-    position: relative;
-    cursor: grab;
-    transition: all 0.2s ease;
-}
-
-.program-block:active {
-    cursor: grabbing;
-}
-
-.program-block.dragging {
-    opacity: 0.5;
-}
-
-.program-block .delete-btn {
-    position: absolute;
-    right: 8px;
-    top: 10px;
-    width: 20px;
-    height: 20px;
-    background: var(--danger);
-    border: none;
-    border-radius: 50%;
-    color: white;
-    cursor: pointer;
-    font-size: 12px;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.program-block:hover>.delete-btn {
-    opacity: 1;
-}
-
-.program-block.active {
-    background: rgba(0, 217, 255, 0.3);
-    border: 2px solid var(--primary);
-}
-
-/* Drop indicators */
-.program-block.drop-above {
-    border-top: 3px solid var(--primary);
-    margin-top: 3px;
-}
-
-.program-block.drop-below {
-    border-bottom: 3px solid var(--primary);
-    margin-bottom: 3px;
-}
-
-/* Control block (Repeat) */
-.program-block.control-block {
-    flex-direction: column;
-    align-items: stretch;
-    border-left: 4px solid var(--success);
-    background: rgba(16, 185, 129, 0.15);
-}
-
-/* Loop children container */
-.loop-children {
     width: 100%;
-    min-height: 50px;
-    margin-top: 8px;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.2);
-    border: 2px dashed rgba(255, 255, 255, 0.2);
-    border-radius: var(--radius-sm);
-}
-
-.loop-children.drag-over {
-    border-color: var(--primary);
-    background: rgba(0, 217, 255, 0.1);
-}
-
-.loop-hint {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    min-height: 40px;
-    color: var(--text-muted);
-    font-style: italic;
-    font-size: 0.85rem;
-}
-
-.loop-children.has-children .loop-hint {
-    display: none;
-}
-
-/* Child blocks inside loop */
-.program-block.child-block {
-    background: rgba(255, 255, 255, 0.08);
-    margin-left: 0;
-}
-
-.program-block.child-block:hover {
-    background: rgba(255, 255, 255, 0.12);
 }
 
 .program-actions {
-    margin-top: 15px;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    justify-content: flex-end;
 }
 
 /* ===== Game Container ===== */

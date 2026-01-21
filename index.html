@@ -7,6 +7,10 @@
     <title>彈力兔 RoboBunny - 採草莓任務</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/blockly/blockly_compressed.js"></script>
+    <script src="https://unpkg.com/blockly/blocks_compressed.js"></script>
+    <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
+    <script src="https://unpkg.com/blockly/msg/zh-hant.js"></script>
 </head>
 
 <body>
@@ -114,71 +118,26 @@
                 <div class="block-editor">
                     <h3>🧩 程式積木</h3>
 
-                    <div class="editor-columns">
-                        <!-- Block Palette Column -->
-                        <div class="block-palette">
-                            <div class="block-category">
-                                <h4>移動指令</h4>
-                                <div class="block-item" draggable="true" data-block="F_Jump">
-                                    <span class="block-color jump"></span>
-                                    F_Jump(<select class="block-param">
-                                        <option>1</option>
-                                        <option>2</option>
-                                    </select>)
-                                </div>
-                                <div class="block-item" draggable="true" data-block="FR_Jump">
-                                    <span class="block-color jump-r"></span>
-                                    FR_Jump(<select class="block-param">
-                                        <option>1</option>
-                                        <option>2</option>
-                                    </select>)
-                                </div>
-                                <div class="block-item" draggable="true" data-block="FL_Jump">
-                                    <span class="block-color jump-l"></span>
-                                    FL_Jump(<select class="block-param">
-                                        <option>1</option>
-                                        <option>2</option>
-                                    </select>)
-                                </div>
-                            </div>
-
-                            <div class="block-category">
-                                <h4>轉向指令</h4>
-                                <div class="block-item" draggable="true" data-block="Turn">
-                                    <span class="block-color turn"></span>
-                                    Turn(<select class="block-param">
-                                        <option>右</option>
-                                        <option>左</option>
-                                        <option>後</option>
-                                    </select>)
-                                </div>
-                            </div>
-
-                            <div class="block-category">
-                                <h4>控制積木</h4>
-                                <div class="block-item control" draggable="true" data-block="Repeat">
-                                    <span class="block-color control"></span>
-                                    🔁 重複 <input type="number" class="block-param" value="2" min="1" max="99"
-                                        style="width: 50px;"> 次
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Program Area Column -->
-                        <div class="program-area">
-                            <div class="program-header">
-                                <h4>我的程式</h4>
-                                <span class="block-count">積木數：<span id="block-count">0</span> / <span
-                                        id="block-limit">20</span></span>
-                            </div>
-                            <div class="program-blocks" id="program-blocks">
-                                <div class="drop-hint">拖曳積木到這裡</div>
-                            </div>
-                            <div class="program-actions">
-                                <button class="action-btn danger" id="clear-program">🗑️ 清除程式</button>
-                            </div>
-                        </div>
-                    </div>
+                    <div id="blocklyDiv" style="height: 600px; width: 100%;"></div>
+                    <xml id="toolbox" style="display: none">
+                        <category name="移動指令" colour="#5b80a5">
+                            <block type="F_Jump"></block>
+                            <block type="FR_Jump"></block>
+                            <block type="FL_Jump"></block>
+                        </category>
+                        <category name="轉向指令" colour="#5ba55b">
+                            <block type="Turn"></block>
+                        </category>
+                        <category name="控制" colour="#a55b80">
+                            <block type="controls_repeat_ext">
+                                <value name="TIMES">
+                                    <shadow type="math_number">
+                                        <field name="NUM">2</field>
+                                    </shadow>
+                                </value>
+                            </block>
+                        </category>
+                    </xml>
                 </div>
 
                 <!-- Game Grid -->

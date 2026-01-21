@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Refresh map selector when switching to game tab
             if (tabId === 'game') {
                 mapDesigner.loadSavedMaps();
+                blockEditor.resize();
             }
         });
     });

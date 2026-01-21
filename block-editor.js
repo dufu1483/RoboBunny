@@ -1,687 +1,179 @@
 /**
  * Block Editor Module
- * Visual programming interface for RoboBunny
+ * Visual programming interface for RoboBunny using Blockly
  */
 
 class BlockEditor {
     constructor(gameEngine) {
         this.gameEngine = gameEngine;
-        this.program = [];
-        this.blockLimit = 20;
+        this.workspace = null;
         this.currentStep = 0;
-        this.draggedBlockIndex = null;
+        this.blockLimit = 20;
 
-        this.init();
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.init());
+        } else {
+            this.init();
+        }
     }
 
     /**
      * Initialize the block editor
      */
     init() {
-        this.bindDragEvents();
-        this.bindControlEvents();
-        this.updateBlockCount();
-    }
+        this.defineBlocks();
 
-    /**
-     * Bind drag and drop events
-     */
-    bindDragEvents() {
-        // Palette blocks
-        document.querySelectorAll('.block-palette .block-item').forEach(block => {
-            block.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('blockType', block.dataset.block);
-                e.dataTransfer.setData('isNew', 'true');
-                const param = block.querySelector('.block-param');
-                if (param) {
-                    e.dataTransfer.setData('blockValue', param.value);
-                }
-            });
-        });
+        // Wait a tick to ensure container needs are met
+        setTimeout(() => {
+            if (!document.getElementById('blocklyDiv')) return;
 
-        // Program area (only handles drops that don't hit specific blocks)
-        const programArea = document.getElementById('program-blocks');
-        if (programArea) {
-            programArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                programArea.classList.add('drag-over');
-            });
-
-            programArea.addEventListener('dragleave', (e) => {
-                // Only remove if leaving the program area itself
-                if (e.target === programArea) {
-                    programArea.classList.remove('drag-over');
-                }
-            });
-
-            programArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                programArea.classList.remove('drag-over');
-
-                // Only add if not handled by a specific block
-                if (e.target === programArea || e.target.classList.contains('drop-hint')) {
-                    const blockType = e.dataTransfer.getData('blockType');
-                    const blockValue = e.dataTransfer.getData('blockValue');
-                    const isNew = e.dataTransfer.getData('isNew') === 'true';
-                    const isChild = e.dataTransfer.getData('isChild') === 'true';
-
-                    if (isNew && this.countBlocks() < this.blockLimit) {
-                        this.addBlock(blockType, blockValue, -1);
-                    } else {
-                        // Move existing block (from main or any loop) to main program end
-                        if (this.draggedBlockSourceArray && this.draggedBlockIndex !== null) {
-                            const movedBlock = this.draggedBlockSourceArray.splice(this.draggedBlockIndex, 1)[0];
-                            this.program.push(movedBlock);
-                            this.renderProgram();
-                            this.updateBlockCount();
-
-                            // Reset
-                            this.draggedBlockSourceArray = null;
-                            this.draggedBlockIndex = null;
-                        }
+            // Define toolbox using JSON format with categories
+            const toolbox = {
+                'kind': 'categoryToolbox',
+                'contents': [
+                    {
+                        'kind': 'category',
+                        'name': '移動指令',
+                        'colour': '#5b80a5',
+                        'contents': [
+                            { 'kind': 'block', 'type': 'F_Jump' },
+                            { 'kind': 'block', 'type': 'FR_Jump' },
+                            { 'kind': 'block', 'type': 'FL_Jump' }
+                        ]
+                    },
+                    {
+                        'kind': 'category',
+                        'name': '轉向指令',
+                        'colour': '#5ba55b',
+                        'contents': [
+                            { 'kind': 'block', 'type': 'Turn' }
+                        ]
+                    },
+                    {
+                        'kind': 'category',
+                        'name': '控制',
+                        'colour': '#a55b80',
+                        'contents': [
+                            {
+                                'kind': 'block',
+                                'type': 'controls_repeat_ext',
+                                'inputs': {
+                                    'TIMES': {
+                                        'shadow': {
+                                            'type': 'math_number',
+                                            'fields': {
+                                                'NUM': 2
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        ]
                     }
-                }
-            });
-        }
-    }
+                ]
+            };
 
-    /**
-     * Get insert index based on Y position
-     */
-    getInsertIndex(clientY) {
-        const blocks = document.querySelectorAll('.program-block');
-        if (blocks.length === 0) return 0;
-
-        for (let i = 0; i < blocks.length; i++) {
-            const rect = blocks[i].getBoundingClientRect();
-            const midY = rect.top + rect.height / 2;
-            if (clientY < midY) {
-                return i;
-            }
-        }
-        return blocks.length;
-    }
-
-    /**
-     * Count total blocks (including children in loops)
-     */
-    countBlocks() {
-        let count = 0;
-        const countRecursive = (blocks) => {
-            for (const block of blocks) {
-                count++;
-                if (block.children && block.children.length > 0) {
-                    countRecursive(block.children);
-                }
-            }
-        };
-        countRecursive(this.program);
-        return count;
-    }
-
-    /**
-     * Add a block to the program at specified index
-     */
-    addBlock(type, value, index = -1) {
-        const block = {
-            type: type,
-            value: this.parseValue(type, value)
-        };
-
-        // Repeat blocks have children array
-        if (type === 'Repeat') {
-            block.children = [];
-        }
-
-        if (index === -1 || index >= this.program.length) {
-            this.program.push(block);
-        } else {
-            this.program.splice(index, 0, block);
-        }
-
-        this.renderProgram();
-        this.updateBlockCount();
-    }
-
-    /**
-     * Parse value based on block type
-     */
-    parseValue(type, value) {
-        switch (type) {
-            case 'F_Jump':
-            case 'FR_Jump':
-            case 'FL_Jump':
-            case 'Repeat':
-                return parseInt(value) || 2;
-            case 'Turn':
-                return value || '右';
-            default:
-                return value;
-        }
-    }
-
-    /**
-     * Remove a block from the program
-     */
-    removeBlock(index) {
-        this.program.splice(index, 1);
-        this.renderProgram();
-        this.updateBlockCount();
-    }
-
-    /**
-     * Move block from one position to another
-     */
-    moveBlock(fromIndex, toIndex) {
-        if (fromIndex === toIndex) return;
-
-        const block = this.program.splice(fromIndex, 1)[0];
-        if (toIndex > fromIndex) {
-            toIndex--;
-        }
-        this.program.splice(toIndex, 0, block);
-        this.renderProgram();
-    }
-
-    /**
-     * Render the program blocks
-     */
-    renderProgram() {
-        const container = document.getElementById('program-blocks');
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        if (this.program.length === 0) {
-            container.innerHTML = '<div class="drop-hint">拖曳積木到這裡</div>';
-            container.classList.remove('has-blocks');
-            return;
-        }
-
-        container.classList.add('has-blocks');
-
-        this.program.forEach((block, index) => {
-            const el = this.createBlockElement(block, index, 0);
-            container.appendChild(el);
-        });
-
-        // Add drop zones between blocks
-        this.addDropZones(container);
-    }
-
-    /**
-     * Create block element
-     */
-    createBlockElement(block, index, nestLevel) {
-        const el = document.createElement('div');
-        el.className = 'program-block';
-        el.dataset.index = index;
-        el.draggable = true;
-
-        // Add control class for Repeat
-        if (block.type === 'Repeat') {
-            el.classList.add('control-block');
-        }
-
-        // Nesting style
-        if (nestLevel > 0) {
-            el.style.marginLeft = `${nestLevel * 20}px`;
-        }
-
-        el.innerHTML = this.getBlockHTML(block) +
-            `<button class="delete-btn" data-index="${index}">×</button>`;
-
-        // Drag events for reordering
-        el.addEventListener('dragstart', (e) => {
-            e.stopPropagation();
-            this.draggedBlockIndex = index;
-            this.draggedBlockSourceArray = this.program; // Store source array
-            e.dataTransfer.setData('blockType', block.type);
-            e.dataTransfer.setData('isNew', 'false');
-            e.dataTransfer.setData('fromIndex', index.toString());
-            el.classList.add('dragging');
-        });
-
-        el.addEventListener('dragend', () => {
-            el.classList.remove('dragging');
-            this.draggedBlockIndex = null;
-        });
-
-        // Delete button handler
-        el.querySelector('.delete-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.removeBlock(index);
-        });
-
-        // Value change handler
-        const select = el.querySelector('.block-param');
-        if (select) {
-            select.addEventListener('change', (e) => {
-                this.program[index].value = this.parseValue(block.type, e.target.value);
-            });
-            // Prevent drag start when interacting with input/select
-            select.addEventListener('mousedown', (e) => {
-                e.stopPropagation();
-            });
-        }
-
-        // Children select for Repeat
-        const childrenSelect = el.querySelector('.children-param');
-        if (childrenSelect) {
-            childrenSelect.addEventListener('change', (e) => {
-                this.program[index].childBlockType = e.target.value;
-            });
-        }
-
-        // If Repeat block, render children container
-        if (block.type === 'Repeat') {
-            const childrenContainer = document.createElement('div');
-            childrenContainer.className = 'loop-children';
-            childrenContainer.dataset.parentIndex = index;
-
-            // Drop zone for loop content
-            childrenContainer.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                childrenContainer.classList.add('drag-over');
+            this.workspace = Blockly.inject('blocklyDiv', {
+                toolbox: toolbox,
+                scrollbars: true,
+                trashcan: true,
             });
 
-            childrenContainer.addEventListener('dragleave', (e) => {
-                childrenContainer.classList.remove('drag-over');
-            });
+            // Set darker background manually for container
+            const div = document.getElementById('blocklyDiv');
+            if (div) div.style.backgroundColor = '#1e1e2f';
 
-            childrenContainer.addEventListener('drop', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                childrenContainer.classList.remove('drag-over');
+            this.bindControlEvents();
+            this.workspace.addChangeListener(() => this.updateBlockCount());
 
-                const blockType = e.dataTransfer.getData('blockType');
-                const blockValue = e.dataTransfer.getData('blockValue');
-                const isNew = e.dataTransfer.getData('isNew') === 'true';
-                const isChild = e.dataTransfer.getData('isChild') === 'true';
-
-                if (isNew) {
-                    // New block from palette
-                    if (this.countBlocks() < this.blockLimit) {
-                        const childBlock = {
-                            type: blockType,
-                            value: this.parseValue(blockType, blockValue)
-                        };
-                        if (blockType === 'Repeat') {
-                            childBlock.children = [];
-                        }
-                        this.program[index].children.push(childBlock);
-                        this.renderProgram();
-                        this.updateBlockCount();
-                    }
-                } else {
-                    if (this.draggedBlockSourceArray && this.draggedBlockIndex !== null) {
-                        const movedBlock = this.draggedBlockSourceArray.splice(this.draggedBlockIndex, 1)[0];
-                        this.program[index].children.push(movedBlock);
-
-                        this.renderProgram();
-                        this.updateBlockCount();
-
-                        // Reset
-                        this.draggedBlockSourceArray = null;
-                        this.draggedBlockIndex = null;
-                    }
-                }
-            });
-
-            // Render children
-            if (block.children && block.children.length > 0) {
-                block.children.forEach((child, childIdx) => {
-                    const childEl = this.createChildBlockElement(child, index, childIdx, block.children);
-                    childrenContainer.appendChild(childEl);
-                });
-            } else {
-                const hint = document.createElement('div');
-                hint.className = 'loop-hint';
-                hint.textContent = '拖曳積木到迴圈內';
-                childrenContainer.appendChild(hint);
-            }
-
-            el.appendChild(childrenContainer);
-        }
-
-        return el;
-    }
-
-    /**
-     * Create child block element (inside a loop) - supports nested loops
-     */
-    createChildBlockElement(block, parentIndex, childIndex, parentChildren) {
-        const el = document.createElement('div');
-        el.className = 'program-block child-block';
-        el.dataset.parentIndex = parentIndex;
-        el.dataset.childIndex = childIndex;
-        el.draggable = true;
-
-        // Add control class for nested Repeat
-        if (block.type === 'Repeat') {
-            el.classList.add('control-block');
-        }
-
-        el.innerHTML = this.getBlockHTML(block) +
-            `<button class="delete-btn">×</button>`;
-
-        // Drag events for child blocks
-        el.addEventListener('dragstart', (e) => {
-            e.stopPropagation();
-            this.draggedBlockIndex = childIndex;
-            this.draggedBlockSourceArray = parentChildren; // Store source array
-            e.dataTransfer.setData('blockType', block.type);
-            e.dataTransfer.setData('blockValue', block.value.toString());
-            e.dataTransfer.setData('isNew', 'false');
-            e.dataTransfer.setData('isChild', 'true');
-            // These might still be useful for other things but sourceArray is main source of truth
-            e.dataTransfer.setData('parentIndex', parentIndex.toString());
-            e.dataTransfer.setData('childIndex', childIndex.toString());
-            el.classList.add('dragging');
-        });
-
-        el.addEventListener('dragend', () => {
-            el.classList.remove('dragging');
-        });
-
-        // Drop zone for reordering within loop
-        el.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const rect = el.getBoundingClientRect();
-            const midY = rect.top + rect.height / 2;
-            el.classList.remove('drop-above', 'drop-below');
-            if (e.clientY < midY) {
-                el.classList.add('drop-above');
-            } else {
-                el.classList.add('drop-below');
-            }
-        });
-
-        el.addEventListener('dragleave', () => {
-            el.classList.remove('drop-above', 'drop-below');
-        });
-
-        el.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            el.classList.remove('drop-above', 'drop-below');
-
-            const isNew = e.dataTransfer.getData('isNew') === 'true';
-            const isChild = e.dataTransfer.getData('isChild') === 'true';
-            const blockType = e.dataTransfer.getData('blockType');
-            const blockValue = e.dataTransfer.getData('blockValue');
-
-            const rect = el.getBoundingClientRect();
-            const midY = rect.top + rect.height / 2;
-            let insertIndex = e.clientY < midY ? childIndex : childIndex + 1;
-
-            if (isNew) {
-                // New block from palette
-                if (this.countBlocks() < this.blockLimit) {
-                    const newBlock = {
-                        type: blockType,
-                        value: this.parseValue(blockType, blockValue)
-                    };
-                    if (blockType === 'Repeat') {
-                        newBlock.children = [];
-                    }
-                    parentChildren.splice(insertIndex, 0, newBlock);
-                    this.renderProgram();
-                    this.updateBlockCount();
-                }
-            } else {
-                if (this.draggedBlockSourceArray && this.draggedBlockIndex !== null) {
-                    const sourceArray = this.draggedBlockSourceArray;
-
-                    // If moving within same array (parentChildren), need to handle index shift
-                    let actualInsertIndex = insertIndex;
-                    if (sourceArray === parentChildren && this.draggedBlockIndex < insertIndex) {
-                        actualInsertIndex--;
-                    }
-
-                    const movedBlock = sourceArray.splice(this.draggedBlockIndex, 1)[0];
-                    parentChildren.splice(actualInsertIndex, 0, movedBlock);
-
-                    this.renderProgram();
-                    this.updateBlockCount();
-
-                    // Reset
-                    this.draggedBlockSourceArray = null;
-                    this.draggedBlockIndex = null;
-                }
-            }
-        });
-
-        // Delete child
-        el.querySelector('.delete-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            parentChildren.splice(childIndex, 1);
-            this.renderProgram();
+            // Initial count update
             this.updateBlockCount();
-        });
+        }, 100);
+    }
 
-        // Value change
-        const select = el.querySelector('.block-param');
-        if (select) {
-            select.addEventListener('change', (e) => {
-                block.value = this.parseValue(block.type, e.target.value);
-            });
-            // Prevent drag start when interacting with input/select
-            select.addEventListener('mousedown', (e) => {
-                e.stopPropagation();
-            });
-        }
-
-        // If nested Repeat, add children container
-        if (block.type === 'Repeat') {
-            if (!block.children) block.children = [];
-
-            const childrenContainer = document.createElement('div');
-            childrenContainer.className = 'loop-children nested-loop';
-
-            // Drop zone for nested loop content
-            childrenContainer.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                childrenContainer.classList.add('drag-over');
-            });
-
-            childrenContainer.addEventListener('dragleave', (e) => {
-                childrenContainer.classList.remove('drag-over');
-            });
-
-            childrenContainer.addEventListener('drop', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                childrenContainer.classList.remove('drag-over');
-
-                const blockType = e.dataTransfer.getData('blockType');
-                const blockValue = e.dataTransfer.getData('blockValue');
-                const isNew = e.dataTransfer.getData('isNew') === 'true';
-
-                if (isNew) {
-                    // New block from palette
-                    if (this.countBlocks() < this.blockLimit) {
-                        const newChild = {
-                            type: blockType,
-                            value: this.parseValue(blockType, blockValue)
-                        };
-                        if (blockType === 'Repeat') {
-                            newChild.children = [];
-                        }
-                        block.children.push(newChild);
-                        this.renderProgram();
-                        this.updateBlockCount();
-                    }
-                } else {
-                    if (this.draggedBlockSourceArray && this.draggedBlockIndex !== null) {
-                        const movedBlock = this.draggedBlockSourceArray.splice(this.draggedBlockIndex, 1)[0];
-                        block.children.push(movedBlock);
-
-                        this.renderProgram();
-                        this.updateBlockCount();
-
-                        // Reset
-                        this.draggedBlockSourceArray = null;
-                        this.draggedBlockIndex = null;
-                    }
-                }
-            });
-
-            // Render nested children
-            if (block.children.length > 0) {
-                block.children.forEach((nestedChild, nestedIdx) => {
-                    const nestedEl = this.createChildBlockElement(nestedChild, parentIndex, nestedIdx, block.children);
-                    childrenContainer.appendChild(nestedEl);
-                });
-            } else {
-                const hint = document.createElement('div');
-                hint.className = 'loop-hint';
-                hint.textContent = '拖曳積木到迴圈內';
-                childrenContainer.appendChild(hint);
+    /**
+     * Define custom blocks
+     */
+    /**
+     * Define custom blocks
+     */
+    defineBlocks() {
+        Blockly.Blocks['F_Jump'] = {
+            init: function () {
+                this.appendDummyInput()
+                    .appendField("向前跳")
+                    .appendField(new Blockly.FieldDropdown([["1", "1"], ["2", "2"]]), "VALUE")
+                    .appendField("格");
+                this.setPreviousStatement(true, null);
+                this.setNextStatement(true, null);
+                this.setColour(210);
+                this.setTooltip("向前跳躍");
+                this.setHelpUrl("");
             }
+        };
 
-            el.appendChild(childrenContainer);
-        }
+        Blockly.Blocks['FR_Jump'] = {
+            init: function () {
+                this.appendDummyInput()
+                    .appendField("右前跳")
+                    .appendField(new Blockly.FieldDropdown([["1", "1"], ["2", "2"]]), "VALUE")
+                    .appendField("格");
+                this.setPreviousStatement(true, null);
+                this.setNextStatement(true, null);
+                this.setColour(260);
+                this.setTooltip("向右前方跳躍");
+                this.setHelpUrl("");
+            }
+        };
 
-        return el;
+        Blockly.Blocks['FL_Jump'] = {
+            init: function () {
+                this.appendDummyInput()
+                    .appendField("左前跳")
+                    .appendField(new Blockly.FieldDropdown([["1", "1"], ["2", "2"]]), "VALUE")
+                    .appendField("格");
+                this.setPreviousStatement(true, null);
+                this.setNextStatement(true, null);
+                this.setColour(330);
+                this.setTooltip("向左前方跳躍");
+                this.setHelpUrl("");
+            }
+        };
+
+        Blockly.Blocks['Turn'] = {
+            init: function () {
+                this.appendDummyInput()
+                    .appendField("轉向")
+                    .appendField(new Blockly.FieldDropdown([["右", "右"], ["左", "左"], ["後", "後"]]), "VALUE");
+                this.setPreviousStatement(true, null);
+                this.setNextStatement(true, null);
+                this.setColour(40);
+                this.setTooltip("改變方向");
+                this.setHelpUrl("");
+            }
+        };
     }
 
     /**
-     * Add drop zones between blocks
+     * Bind control button events
      */
-    addDropZones(container) {
-        const blocks = container.querySelectorAll(':scope > .program-block');
-
-        blocks.forEach((block, index) => {
-            block.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const rect = block.getBoundingClientRect();
-                const midY = rect.top + rect.height / 2;
-
-                block.classList.remove('drop-above', 'drop-below');
-                if (e.clientY < midY) {
-                    block.classList.add('drop-above');
-                } else {
-                    block.classList.add('drop-below');
-                }
-            });
-
-            block.addEventListener('dragleave', () => {
-                block.classList.remove('drop-above', 'drop-below');
-            });
-
-            block.addEventListener('drop', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                block.classList.remove('drop-above', 'drop-below');
-
-                const isNew = e.dataTransfer.getData('isNew') === 'true';
-                const blockType = e.dataTransfer.getData('blockType');
-                const blockValue = e.dataTransfer.getData('blockValue');
-
-                const rect = block.getBoundingClientRect();
-                const midY = rect.top + rect.height / 2;
-                let insertIndex = parseInt(block.dataset.index);
-
-                if (e.clientY >= midY) {
-                    insertIndex++;
-                }
-
-                if (isNew) {
-                    if (this.countBlocks() < this.blockLimit) {
-                        this.addBlock(blockType, blockValue, insertIndex);
-                    }
-                } else {
-                    if (this.draggedBlockSourceArray && this.draggedBlockIndex !== null) {
-                        // Handle reordering within main program or moving from loop
-                        const sourceArray = this.draggedBlockSourceArray;
-
-                        // If moving within same array (this.program), need to handle index shift
-                        let actualInsertIndex = insertIndex;
-                        if (sourceArray === this.program && this.draggedBlockIndex < insertIndex) {
-                            actualInsertIndex--;
-                        }
-
-                        const movedBlock = sourceArray.splice(this.draggedBlockIndex, 1)[0];
-                        this.program.splice(actualInsertIndex, 0, movedBlock);
-
-                        this.renderProgram();
-                        this.updateBlockCount();
-
-                        // Reset
-                        this.draggedBlockSourceArray = null;
-                        this.draggedBlockIndex = null;
-                    }
-                }
-            });
-        });
-    }
-
-    /**
-     * Get HTML for a block
-     */
-    getBlockHTML(block) {
-        const colorClass = this.getBlockColorClass(block.type);
-
-        switch (block.type) {
-            case 'F_Jump':
-                return `<span class="block-color ${colorClass}"></span>
-                    F_Jump(<select class="block-param">
-                        <option ${block.value === 1 ? 'selected' : ''}>1</option>
-                        <option ${block.value === 2 ? 'selected' : ''}>2</option>
-                    </select>)`;
-            case 'FR_Jump':
-                return `<span class="block-color ${colorClass}"></span>
-                    FR_Jump(<select class="block-param">
-                        <option ${block.value === 1 ? 'selected' : ''}>1</option>
-                        <option ${block.value === 2 ? 'selected' : ''}>2</option>
-                    </select>)`;
-            case 'FL_Jump':
-                return `<span class="block-color ${colorClass}"></span>
-                    FL_Jump(<select class="block-param">
-                        <option ${block.value === 1 ? 'selected' : ''}>1</option>
-                        <option ${block.value === 2 ? 'selected' : ''}>2</option>
-                    </select>)`;
-            case 'Turn':
-                return `<span class="block-color ${colorClass}"></span>
-                    Turn(<select class="block-param">
-                        <option ${block.value === '右' ? 'selected' : ''}>右</option>
-                        <option ${block.value === '左' ? 'selected' : ''}>左</option>
-                        <option ${block.value === '後' ? 'selected' : ''}>後</option>
-                    </select>)`;
-            case 'Repeat':
-                return `<span class="block-color ${colorClass}"></span>
-                    🔁 重複 <input type="number" class="block-param" value="${block.value}" min="1" max="99" style="width: 50px;"> 次`;
-            default:
-                return block.type;
-        }
-    }
-
-    /**
-     * Get color class for block type
-     */
-    getBlockColorClass(type) {
-        switch (type) {
-            case 'F_Jump': return 'jump';
-            case 'FR_Jump': return 'jump-r';
-            case 'FL_Jump': return 'jump-l';
-            case 'Turn': return 'turn';
-            case 'Repeat': return 'control';
-            default: return '';
-        }
+    bindControlEvents() {
+        document.getElementById('run-btn')?.addEventListener('click', () => this.runProgram());
+        document.getElementById('step-btn')?.addEventListener('click', () => this.stepProgram());
+        document.getElementById('reset-btn')?.addEventListener('click', () => this.resetGame());
+        document.getElementById('clear-program')?.addEventListener('click', () => this.clearProgram());
     }
 
     /**
      * Update block count display
      */
     updateBlockCount() {
+        if (!this.workspace) return;
+
         const countEl = document.getElementById('block-count');
         const limitEl = document.getElementById('block-limit');
-        const total = this.countBlocks();
+        const total = this.workspace.getAllBlocks(false).length;
 
         if (countEl) {
             countEl.textContent = total;
@@ -696,51 +188,82 @@ class BlockEditor {
      * Clear the program
      */
     clearProgram() {
-        if (this.program.length === 0) return;
+        if (!this.workspace) return;
+        if (this.workspace.getAllBlocks().length === 0) return;
 
         if (confirm('確定要清除所有程式積木嗎？')) {
-            this.program = [];
-            this.currentStep = 0;
-            this.renderProgram();
-            this.updateBlockCount();
+            this.workspace.clear();
+            this.resetGame();
         }
     }
 
     /**
-     * Bind control button events
+     * Convert Blockly workspace to flat command array for GameEngine
      */
-    bindControlEvents() {
-        document.getElementById('run-btn')?.addEventListener('click', () => this.runProgram());
-        document.getElementById('step-btn')?.addEventListener('click', () => this.stepProgram());
-        document.getElementById('reset-btn')?.addEventListener('click', () => this.resetGame());
-        document.getElementById('clear-program')?.addEventListener('click', () => this.clearProgram());
-    }
+    getFlattenedProgram() {
+        if (!this.workspace) return [];
 
-    /**
-     * Flatten program for execution (expand loops)
-     */
-    flattenProgram() {
-        const flat = [];
-        const flatten = (blocks) => {
-            for (const block of blocks) {
-                if (block.type === 'Repeat' && block.children) {
-                    for (let i = 0; i < block.value; i++) {
-                        flatten(block.children);
-                    }
-                } else {
-                    flat.push({ type: block.type, value: block.value });
+        const topBlocks = this.workspace.getTopBlocks(true); // Ordered by position
+        if (topBlocks.length === 0) return [];
+
+        // We assume the first top block is the start of the program
+        const startBlock = topBlocks[0];
+
+        const traverse = (block) => {
+            const cmds = [];
+            let currentBlock = block;
+
+            while (currentBlock) {
+                if (!currentBlock.isEnabled()) {
+                    currentBlock = currentBlock.getNextBlock();
+                    continue;
                 }
+
+                if (currentBlock.type === 'controls_repeat_ext') {
+                    // Handle Repeat Loop
+                    const timesBlock = currentBlock.getInputTargetBlock('TIMES');
+                    let repeatCount = 2; // Default
+                    if (timesBlock && timesBlock.type === 'math_number') {
+                        repeatCount = parseInt(timesBlock.getFieldValue('NUM')) || 2;
+                    }
+
+                    const branchBlock = currentBlock.getInputTargetBlock('DO');
+                    const childCmds = traverse(branchBlock); // Recursively get children
+
+                    // Flatten loop: repeat the commands N times
+                    for (let i = 0; i < repeatCount; i++) {
+                        cmds.push(...childCmds.map(cmd => ({ ...cmd }))); // Clone objects to avoid reference issues
+                    }
+
+                } else if (['F_Jump', 'FR_Jump', 'FL_Jump', 'Turn'].includes(currentBlock.type)) {
+                    // Handle Action Blocks
+                    let val = currentBlock.getFieldValue('VALUE');
+
+                    // Parse numbers for jumps
+                    if (currentBlock.type.includes('Jump')) {
+                        val = parseInt(val);
+                    }
+
+                    cmds.push({
+                        type: currentBlock.type,
+                        value: val
+                    });
+                }
+
+                currentBlock = currentBlock.getNextBlock();
             }
+            return cmds;
         };
-        flatten(this.program);
-        return flat;
+
+        return traverse(startBlock);
     }
 
     /**
      * Run the full program
      */
     async runProgram() {
-        if (this.program.length === 0) {
+        const program = this.getFlattenedProgram();
+        if (program.length === 0) {
             alert('請先建立程式！');
             return;
         }
@@ -751,17 +274,18 @@ class BlockEditor {
         }
 
         this.resetGame();
+        // Small delay to allow reset to visually clear
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        const flatProgram = this.flattenProgram();
-        await this.gameEngine.executeProgram(flatProgram);
+        await this.gameEngine.executeProgram(program);
     }
 
     /**
      * Execute one step
      */
     async stepProgram() {
-        if (this.program.length === 0) {
+        const program = this.getFlattenedProgram();
+        if (program.length === 0) {
             alert('請先建立程式！');
             return;
         }
@@ -775,8 +299,7 @@ class BlockEditor {
             return;
         }
 
-        const flatProgram = this.flattenProgram();
-        const result = await this.gameEngine.executeStep(flatProgram, this.currentStep);
+        const result = await this.gameEngine.executeStep(program, this.currentStep);
 
         if (result === -1) {
             this.gameEngine.setStatus(`完成！得分：${this.gameEngine.score}`, 'complete');
@@ -786,29 +309,30 @@ class BlockEditor {
     }
 
     /**
-     * Reset the game
+     * Reset the game state
      */
     resetGame() {
         this.currentStep = 0;
         this.gameEngine.reset();
-        document.querySelectorAll('.program-block').forEach(block => {
-            block.classList.remove('active');
-        });
+        if (this.workspace) {
+            this.workspace.highlightBlock(null);
+        }
     }
 
-    /**
-     * Get the current program
-     */
-    getProgram() {
-        return this.program;
-    }
-
-    /**
-     * Set the block limit
-     */
     setBlockLimit(limit) {
         this.blockLimit = limit;
-        this.updateBlockCount();
+        if (this.workspace) {
+            this.updateBlockCount();
+        }
+    }
+
+    /**
+     * Resize workspace - call when container becomes visible
+     */
+    resize() {
+        if (this.workspace) {
+            Blockly.svgResize(this.workspace);
+        }
     }
 }
 
