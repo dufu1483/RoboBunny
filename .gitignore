@@ -1,0 +1,15 @@
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Agent/Environment stuff
+.agent/
+.gemini/
+
+# Scratch/Temp
+tmp/
+*.tmp
+*.log
