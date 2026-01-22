@@ -258,7 +258,6 @@ class BlockEditor {
      */
     bindControlEvents() {
         document.getElementById('run-btn')?.addEventListener('click', () => this.runProgram());
-        document.getElementById('step-btn')?.addEventListener('click', () => this.stepProgram());
         document.getElementById('reset-btn')?.addEventListener('click', () => this.resetGame());
         document.getElementById('clear-program')?.addEventListener('click', () => this.clearProgram());
     }
@@ -528,34 +527,6 @@ class BlockEditor {
             currentBlock = currentBlock.getNextBlock();
         }
         return nodes;
-    }
-
-    /**
-     * Execute one step
-     */
-    async stepProgram() {
-        const program = this.getProgramAST();
-        if (program.length === 0) {
-            alert('請先建立程式！');
-            return;
-        }
-
-        if (!this.gameEngine.mapData) {
-            alert('請先選擇地圖！');
-            return;
-        }
-
-        if (this.gameEngine.isGameOver) {
-            return;
-        }
-
-        const result = await this.gameEngine.executeStep(program, this.currentStep);
-
-        if (result === -1) {
-            this.gameEngine.setStatus(`完成！得分：${this.gameEngine.score}`, 'complete');
-        } else {
-            this.currentStep = result;
-        }
     }
 
     /**
