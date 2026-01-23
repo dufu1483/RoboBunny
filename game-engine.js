@@ -575,8 +575,8 @@ class GameEngine {
                 return 0;
 
             case 'Binary':
-                const left = this.evaluate(node.left);
-                const right = this.evaluate(node.right);
+                const left = this.evaluateForBunny(node.left, bunnyIdx);
+                const right = this.evaluateForBunny(node.right, bunnyIdx);
                 switch (node.op) {
                     case 'ADD': return left + right;
                     case 'MINUS': return left - right;
@@ -588,8 +588,8 @@ class GameEngine {
                 }
 
             case 'Compare':
-                const cLeft = this.evaluate(node.left);
-                const cRight = this.evaluate(node.right);
+                const cLeft = this.evaluateForBunny(node.left, bunnyIdx);
+                const cRight = this.evaluateForBunny(node.right, bunnyIdx);
                 switch (node.op) {
                     case 'EQ': return cLeft == cRight;
                     case 'NEQ': return cLeft != cRight;
@@ -602,13 +602,13 @@ class GameEngine {
 
             case 'Logic':
                 switch (node.op) {
-                    case 'AND': return this.evaluate(node.left) && this.evaluate(node.right);
-                    case 'OR': return this.evaluate(node.left) || this.evaluate(node.right);
+                    case 'AND': return this.evaluateForBunny(node.left, bunnyIdx) && this.evaluateForBunny(node.right, bunnyIdx);
+                    case 'OR': return this.evaluateForBunny(node.left, bunnyIdx) || this.evaluateForBunny(node.right, bunnyIdx);
                     default: return false;
                 }
 
             case 'Not':
-                return !this.evaluate(node.child);
+                return !this.evaluateForBunny(node.child, bunnyIdx);
 
             default:
                 return 0;
