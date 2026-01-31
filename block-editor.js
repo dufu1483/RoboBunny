@@ -125,6 +125,7 @@ class BlockEditor {
             if (div) div.style.backgroundColor = '#1e1e2f';
 
             this.bindControlEvents();
+            this.bindProgramEvents();
             this.workspace.addChangeListener(() => this.updateBlockCount());
 
             // Tab switching for dual bunny mode
@@ -588,7 +589,253 @@ class BlockEditor {
             Blockly.svgResize(this.workspace);
         }
     }
+
+    /**
+     * Bind program save/load events
+     */
+    bindProgramEvents() {
+        document.getElementById('save-program')?.addEventListener('click', () => this.saveProgram());
+        document.getElementById('load-program')?.addEventListener('click', () => this.showProgramList());
+        document.getElementById('export-program')?.addEventListener('click', () => this.exportProgram());
+        document.getElementById('import-program')?.addEventListener('click', () => {
+            document.getElementById('program-file-input')?.click();
+        });
+        document.getElementById('program-file-input')?.addEventListener('change', (e) => this.importProgram(e));
+        document.getElementById('close-program-panel')?.addEventListener('click', () => {
+            document.getElementById('saved-programs-panel').style.display = 'none';
+        });
+    }
+
+    /**
+     * Get the storage key for saved programs
+     */
+    getProgramStorageKey() {
+        return 'roboBunny_savedPrograms';
+    }
+
+    /**
+     * Get all saved programs from localStorage
+     */
+    getSavedPrograms() {
+        const data = localStorage.getItem(this.getProgramStorageKey());
+        return data ? JSON.parse(data) : [];
+    }
+
+    /**
+     * Save program to localStorage
+     */
+    saveProgram() {
+        if (!this.workspace) {
+            alert('積木編輯器尚未準備好！');
+            return;
+        }
+
+        // Get current workspace state
+        this.workspaceStates[this.currentBunny - 1] = Blockly.Xml.workspaceToDom(this.workspace);
+
+        const name = prompt('請輸入程式名稱：', `程式 ${new Date().toLocaleString('zh-TW')}`);
+        if (!name) return;
+
+        // Serialize all workspace states
+        const programData = {
+            name: name,
+            timestamp: Date.now(),
+            bunny1: this.workspaceStates[0] ? Blockly.Xml.domToText(this.workspaceStates[0]) : null,
+            bunny2: this.workspaceStates[1] ? Blockly.Xml.domToText(this.workspaceStates[1]) : null
+        };
+
+        const savedPrograms = this.getSavedPrograms();
+        savedPrograms.push(programData);
+        localStorage.setItem(this.getProgramStorageKey(), JSON.stringify(savedPrograms));
+
+        alert(`程式「${name}」已儲存！`);
+        this.updateProgramList();
+    }
+
+    /**
+     * Show the list of saved programs
+     */
+    showProgramList() {
+        const panel = document.getElementById('saved-programs-panel');
+        if (panel) {
+            panel.style.display = 'block';
+            this.updateProgramList();
+        }
+    }
+
+    /**
+     * Update the program list UI
+     */
+    updateProgramList() {
+        const listEl = document.getElementById('program-list');
+        if (!listEl) return;
+
+        const savedPrograms = this.getSavedPrograms();
+
+        if (savedPrograms.length === 0) {
+            listEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">尚無儲存的程式</p>';
+            return;
+        }
+
+        listEl.innerHTML = savedPrograms.map((prog, index) => `
+            <div class="program-item" data-index="${index}">
+                <span class="program-name">${prog.name}</span>
+                <span class="program-date">${new Date(prog.timestamp).toLocaleDateString('zh-TW')}</span>
+                <div class="program-actions-btns">
+                    <button class="load-prog-btn" data-index="${index}">載入</button>
+                    <button class="delete-prog-btn" data-index="${index}">刪除</button>
+                </div>
+            </div>
+        `).join('');
+
+        // Bind click events
+        listEl.querySelectorAll('.load-prog-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.loadProgramByIndex(parseInt(btn.dataset.index));
+            });
+        });
+
+        listEl.querySelectorAll('.delete-prog-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.deleteProgramByIndex(parseInt(btn.dataset.index));
+            });
+        });
+    }
+
+    /**
+     * Load a program by its index in the saved list
+     */
+    loadProgramByIndex(index) {
+        const savedPrograms = this.getSavedPrograms();
+        if (index < 0 || index >= savedPrograms.length) return;
+
+        const programData = savedPrograms[index];
+        this.loadProgramData(programData);
+    }
+
+    /**
+     * Load program data into the workspace
+     */
+    loadProgramData(programData) {
+        if (!this.workspace) {
+            alert('積木編輯器尚未準備好！');
+            return;
+        }
+
+        // Clear current workspace
+        this.workspace.clear();
+        this.workspaceStates = [null, null];
+
+        // Load bunny 1 program
+        if (programData.bunny1) {
+            try {
+                const xml = Blockly.utils.xml.textToDom(programData.bunny1);
+                this.workspaceStates[0] = xml;
+            } catch (e) {
+                console.error('Error parsing bunny1 program:', e);
+            }
+        }
+
+        // Load bunny 2 program
+        if (programData.bunny2) {
+            try {
+                const xml = Blockly.utils.xml.textToDom(programData.bunny2);
+                this.workspaceStates[1] = xml;
+            } catch (e) {
+                console.error('Error parsing bunny2 program:', e);
+            }
+        }
+
+        // Load current bunny's workspace
+        const currentState = this.workspaceStates[this.currentBunny - 1];
+        if (currentState) {
+            Blockly.Xml.domToWorkspace(currentState, this.workspace);
+        }
+
+        this.updateBlockCount();
+        document.getElementById('saved-programs-panel').style.display = 'none';
+        alert(`程式「${programData.name}」已載入！`);
+    }
+
+    /**
+     * Delete a program by its index
+     */
+    deleteProgramByIndex(index) {
+        const savedPrograms = this.getSavedPrograms();
+        if (index < 0 || index >= savedPrograms.length) return;
+
+        const programName = savedPrograms[index].name;
+        if (!confirm(`確定要刪除程式「${programName}」嗎？`)) return;
+
+        savedPrograms.splice(index, 1);
+        localStorage.setItem(this.getProgramStorageKey(), JSON.stringify(savedPrograms));
+        this.updateProgramList();
+    }
+
+    /**
+     * Export program to a JSON file
+     */
+    exportProgram() {
+        if (!this.workspace) {
+            alert('積木編輯器尚未準備好！');
+            return;
+        }
+
+        // Get current workspace state
+        this.workspaceStates[this.currentBunny - 1] = Blockly.Xml.workspaceToDom(this.workspace);
+
+        const name = prompt('請輸入匯出檔案名稱：', `程式_${new Date().toLocaleDateString('zh-TW').replace(/\//g, '-')}`);
+        if (!name) return;
+
+        const programData = {
+            name: name,
+            timestamp: Date.now(),
+            bunny1: this.workspaceStates[0] ? Blockly.Xml.domToText(this.workspaceStates[0]) : null,
+            bunny2: this.workspaceStates[1] ? Blockly.Xml.domToText(this.workspaceStates[1]) : null
+        };
+
+        const json = JSON.stringify(programData, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${name}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    /**
+     * Import program from a file
+     */
+    importProgram(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const programData = JSON.parse(e.target.result);
+
+                // Validate the data
+                if (!programData.name || (!programData.bunny1 && !programData.bunny2)) {
+                    throw new Error('無效的程式檔案格式');
+                }
+
+                this.loadProgramData(programData);
+            } catch (error) {
+                alert('匯入失敗：' + error.message);
+            }
+        };
+        reader.readAsText(file);
+
+        // Reset file input
+        event.target.value = '';
+    }
 }
 
 // Export for use in other modules
 window.BlockEditor = BlockEditor;
+
