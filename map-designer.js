@@ -562,6 +562,14 @@ class MapDesigner {
                     this.bunnyPosition = mapObject.bunnyPosition;
                     this.bunnyDirection = mapObject.bunnyPosition.direction;
 
+                    // Handle bunny 2 if present
+                    if (mapObject.bunnyPosition2) {
+                        this.bunnyPosition2 = mapObject.bunnyPosition2;
+                        this.bunny2Direction = mapObject.bunnyPosition2.direction;
+                    } else {
+                        this.bunnyPosition2 = null;
+                    }
+
                     // Update direction button
                     document.querySelectorAll('.dir-btn').forEach(btn => {
                         btn.classList.toggle('active', btn.dataset.dir === this.bunnyDirection);
