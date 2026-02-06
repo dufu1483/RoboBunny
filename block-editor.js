@@ -9,6 +9,7 @@ class BlockEditor {
         this.workspace = null;
         this.currentStep = 0;
         this.blockLimit = 20;
+        this.isRunInProgress = false;
 
         // Dual bunny support
         this.currentBunny = 1; // 1 or 2
@@ -480,32 +481,45 @@ class BlockEditor {
     }
 
     async runProgram() {
-        // Get program for bunny 1
-        // First, make sure we have the current workspace saved
-        this.workspaceStates[this.currentBunny - 1] = Blockly.Xml.workspaceToDom(this.workspace);
-
-        const program1 = this.getProgramASTFromState(0);
-        let program2 = null;
-
-        // Check if dual bunny mode
-        if (this.gameEngine.bunnyCount === 2) {
-            program2 = this.getProgramASTFromState(1);
-        }
-
-        if (program1.length === 0 && (!program2 || program2.length === 0)) {
-            alert('請先建立程式！');
+        if (this.isRunInProgress || this.gameEngine.isRunning) {
+            this.gameEngine.setStatus('\u7a0b\u5f0f\u57f7\u884c\u4e2d\uff0c\u8acb\u7a0d\u5019...', 'warning');
             return;
         }
 
-        if (!this.gameEngine.mapData) {
-            alert('請先選擇地圖！');
-            return;
+        this.isRunInProgress = true;
+        const runBtn = document.getElementById('run-btn');
+        if (runBtn) runBtn.disabled = true;
+
+        try {
+            // Save current workspace to avoid losing unswitched edits.
+            this.workspaceStates[this.currentBunny - 1] = Blockly.Xml.workspaceToDom(this.workspace);
+
+            const program1 = this.getProgramASTFromState(0);
+            let program2 = null;
+
+            // Check if dual bunny mode
+            if (this.gameEngine.bunnyCount === 2) {
+                program2 = this.getProgramASTFromState(1);
+            }
+
+            if (program1.length === 0 && (!program2 || program2.length === 0)) {
+                alert('\u8acb\u5148\u5efa\u7acb\u7a0b\u5f0f\uff01');
+                return;
+            }
+
+            if (!this.gameEngine.mapData) {
+                alert('\u8acb\u5148\u9078\u64c7\u5730\u5716\uff01');
+                return;
+            }
+
+            this.resetGame();
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            await this.gameEngine.executeProgram(program1, program2);
+        } finally {
+            this.isRunInProgress = false;
+            if (runBtn) runBtn.disabled = false;
         }
-
-        this.resetGame();
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        await this.gameEngine.executeProgram(program1, program2);
     }
 
     /**

@@ -80,6 +80,9 @@ class GameEngine {
      * Reset the game to initial state
      */
     reset() {
+        // Stop any in-flight async execution immediately.
+        this.isRunning = false;
+
         this.mapData = JSON.parse(JSON.stringify(this.originalMap));
 
         // Reset bunny 1
@@ -338,6 +341,7 @@ class GameEngine {
             }
 
             await this.delay(this.stepDelay);
+            if (!this.isRunning) return false;
 
             this.bunnyActive[bunnyIdx] = false;
             this.setStatus(`兔子 ${bunnyIdx + 1} 跳出邊界！`, 'warning');
@@ -357,6 +361,7 @@ class GameEngine {
         }
 
         await this.delay(this.stepDelay);
+        if (!this.isRunning) return false;
 
         // Update position
         bunny.x = newX;
@@ -379,6 +384,7 @@ class GameEngine {
             await this.delay(300);
         }
 
+        if (!this.isRunning) return false;
         this.updateUI();
         this.renderGrid();
 
@@ -389,24 +395,34 @@ class GameEngine {
      * Execute programs for all bunnies (alternating execution)
      */
     async executeProgram(program, program2 = null) {
+        if (this.isRunning) {
+            this.setStatus('\u7a0b\u5f0f\u57f7\u884c\u4e2d\uff0c\u8acb\u7a0d\u5019...', 'warning');
+            return false;
+        }
+
         this.isRunning = true;
-        this.setStatus('執行中...', 'running');
+        this.setStatus('\u57f7\u884c\u4e2d...', 'running');
         this.executionCounter = 0;
         this.currentBunnyIndex = 0;
 
-        if (this.bunnyCount === 1 || !program2) {
-            // Single bunny mode
-            await this.executeCommandsForBunny(program, 0);
-        } else {
-            // Dual bunny mode - execute both programs in parallel
-            await this.executeDualPrograms(program, program2);
-        }
+        try {
+            if (this.bunnyCount === 1 || !program2) {
+                // Single bunny mode
+                await this.executeCommandsForBunny(program, 0);
+            } else {
+                // Dual bunny mode - execute both programs in parallel
+                await this.executeDualPrograms(program, program2);
+            }
 
-        this.isRunning = false;
+            if (!this.isRunning) return false;
 
-        if (!this.isGameOver) {
-            const totalScore = this.scores[0] + (this.bunnyCount === 2 ? this.scores[1] : 0);
-            this.setStatus(`完成！總得分：${totalScore}`, 'complete');
+            if (!this.isGameOver) {
+                const totalScore = this.scores[0] + (this.bunnyCount === 2 ? this.scores[1] : 0);
+                this.setStatus(`\u5b8c\u6210\uff01\u7e3d\u5f97\u5206\uff1a${totalScore}`, 'complete');
+            }
+            return true;
+        } finally {
+            this.isRunning = false;
         }
     }
 
@@ -420,7 +436,7 @@ class GameEngine {
         let done1 = false, done2 = false;
 
         while (!done1 || !done2) {
-            if (this.isGameOver) return;
+            if (!this.isRunning || this.isGameOver) return;
 
             this.executionCounter++;
             if (this.executionCounter > this.executionLimit) {
@@ -454,7 +470,7 @@ class GameEngine {
         if (!nodes || !Array.isArray(nodes)) return;
 
         for (const node of nodes) {
-            if (this.isGameOver || !this.bunnyActive[bunnyIdx]) return;
+            if (!this.isRunning || this.isGameOver || !this.bunnyActive[bunnyIdx]) return;
             yield await this.executeNodeForBunny(node, bunnyIdx);
         }
     }
@@ -466,6 +482,8 @@ class GameEngine {
         if (!nodes || !Array.isArray(nodes)) return;
 
         for (const node of nodes) {
+            if (!this.isRunning) return;
+
             this.executionCounter++;
             if (this.executionCounter > this.executionLimit) {
                 this.setStatus('程式執行過久 (可能有無窮迴圈)', 'error');
@@ -473,7 +491,7 @@ class GameEngine {
                 return;
             }
 
-            if (this.isGameOver || !this.bunnyActive[bunnyIdx]) return;
+            if (!this.isRunning || this.isGameOver || !this.bunnyActive[bunnyIdx]) return;
 
             await this.executeNodeForBunny(node, bunnyIdx);
         }
@@ -497,7 +515,7 @@ class GameEngine {
 
             case 'While':
                 while (this.evaluateForBunny(node.condition, bunnyIdx)) {
-                    if (this.isGameOver || !this.bunnyActive[bunnyIdx]) return;
+                    if (!this.isRunning || this.isGameOver || !this.bunnyActive[bunnyIdx]) return;
 
                     if (this.executionCounter > this.executionLimit) {
                         this.setStatus('無窮迴圈偵測！', 'error');
@@ -517,7 +535,7 @@ class GameEngine {
                 }
 
                 for (let i = 0; i < times; i++) {
-                    if (this.isGameOver || !this.bunnyActive[bunnyIdx]) return;
+                    if (!this.isRunning || this.isGameOver || !this.bunnyActive[bunnyIdx]) return;
                     await this.executeCommandsForBunny(node.body, bunnyIdx);
                 }
                 break;
