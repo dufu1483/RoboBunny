@@ -583,7 +583,86 @@ body {
     padding: 10px 20px;
     background: rgba(0, 0, 0, 0.2);
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.program-actions .action-btn {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+}
+
+/* ===== Saved Programs Panel ===== */
+.saved-programs {
+    padding: 15px 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid var(--card-border);
+}
+
+.saved-programs h4 {
+    margin-bottom: 10px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+#program-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.program-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+}
+
+.program-name {
+    flex: 1;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.program-date {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-right: 15px;
+}
+
+.program-actions-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.program-actions-btns button {
+    padding: 4px 10px;
+    background: transparent;
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: var(--font);
+    transition: var(--transition);
+}
+
+.program-actions-btns .load-prog-btn:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: rgba(0, 217, 255, 0.1);
+}
+
+.program-actions-btns .delete-prog-btn:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: rgba(255, 107, 107, 0.1);
 }
 
 /* ===== Game Container ===== */

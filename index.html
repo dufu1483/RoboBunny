@@ -127,7 +127,21 @@
                         <button class="bunny-tab" data-bunny="2">🐰 兔子 2</button>
                     </div>
 
-                    <div id="blocklyDiv" style="height: 600px; width: 100%;"></div>
+                    <div class="program-actions">
+                        <button class="action-btn" id="save-program">💾 儲存程式</button>
+                        <button class="action-btn" id="load-program">📂 載入程式</button>
+                        <button class="action-btn" id="export-program">📤 匯出檔案</button>
+                        <button class="action-btn" id="import-program">📥 匯入檔案</button>
+                        <input type="file" id="program-file-input" accept=".json,.xml" style="display: none;">
+                    </div>
+
+                    <div class="saved-programs" id="saved-programs-panel" style="display: none;">
+                        <h4>已儲存程式</h4>
+                        <div id="program-list"></div>
+                        <button class="action-btn" id="close-program-panel" style="margin-top: 10px;">✕ 關閉</button>
+                    </div>
+
+                    <div id="blocklyDiv" style="height: 550px; width: 100%;"></div>
                 </div>
                 <xml id="toolbox" style="display: none">
                     <category name="移動指令" colour="#5b80a5">
